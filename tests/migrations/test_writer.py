@@ -52,6 +52,14 @@ class TestModel1:
     thing = models.FileField(upload_to=upload_to)
 
 
+class TestModelWithNested:
+    """Test model with nested class for serialization testing."""
+    class NestedClass:
+        @classmethod
+        def nested_method(cls):
+            return "default_value"
+
+
 class TextEnum(enum.Enum):
     A = "a-value"
     B = "value-b"
@@ -542,6 +550,17 @@ class WriterTests(SimpleTestCase):
         string, imports = MigrationWriter.serialize(models.SET(42))
         self.assertEqual(string, "models.SET(42)")
         self.serialize_round_trip(models.SET(42))
+
+    def test_serialize_nested_class_method(self):
+        """Test serialization of class methods from nested classes."""
+        # Test the serialization produces the correct qualified name
+        string, imports = MigrationWriter.serialize(TestModelWithNested.NestedClass.nested_method)
+        expected_string = "migrations.test_writer.TestModelWithNested.NestedClass.nested_method"
+        self.assertEqual(string, expected_string)
+        self.assertEqual(imports, {"import migrations.test_writer"})
+        
+        # Test that the serialized string can be evaluated to get back the original function
+        self.serialize_round_trip(TestModelWithNested.NestedClass.nested_method)
 
     def test_serialize_datetime(self):
         self.assertSerializedEqual(datetime.datetime.now())
